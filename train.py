@@ -32,6 +32,12 @@ def main():
     val_loader = torch.utils.data.DataLoader(test_dataset, batch_size=cfg.val_batch_size,
                                              shuffle=False, num_workers=4, drop_last=True)
 
+    
+    for i in train_loader:
+        batch = i
+        break
+    
+    print("====================DEBUG=======================================")
     # -------------------- build trainer --------------------- #
 
     device = torch.device("cuda")
