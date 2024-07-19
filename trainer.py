@@ -1,4 +1,6 @@
 from torch import nn
+import torch.utils
+import torch.utils.data
 from tools.visdom import Visualizer
 from tools.checkpointer import Checkpointer
 from config import Config as cfg
@@ -32,18 +34,61 @@ class DeepCrackTrainer(nn.Module):
 
         self.scaler = torch.cuda.amp.GradScaler()
 
-    def train_op(self, input, target):
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer,mode='min',factor=0.1,patience=10,min_lr=1e-8)
+        
+    def train_op(self, input, target,val = False):
         
         self.optimizer.zero_grad()
+        
         with torch.cuda.amp.autocast():
-            pred_output = self.model(input)
-            loss = self.mask_loss(pred_output.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
-        self.scaler.scale(loss).backward()
-        self.scaler.step(self.optimizer)
-        self.scaler.update()
+            output , f5 ,f4 ,f3, f2, f1 = self.model(input)
+            loss = self.mask_loss(output.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            
+        if not val:
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        
+        self.iter_counter += 1
         
         return  loss
+    
+    def train_loss_op(self , input , target , val = False):
+        """ summation get total loss"""
+        self.optimizer.zero_grad()
+
+        with torch.cuda.amp.autocast():
+            output , f5 , f4 ,f3 , f2 ,f1 = self.model(input)
+            output_loss = self.mask_loss(output.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            fuse5_loss = self.mask_loss(f5.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            fuse4_loss = self.mask_loss(f4.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            fuse3_loss = self.mask_loss(f3.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            fuse2_loss = self.mask_loss(f2.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
+            fuse1_loss = self.mask_loss(f1.view(-1, 1), target.view(-1, 1)) / cfg.train_batch_size
         
+        total_loss = output_loss + fuse5_loss + fuse4_loss + fuse3_loss + fuse2_loss + fuse1_loss
+        
+        if not val:
+            self.scaler.scale(total_loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+            self.scheduler.step(total_loss)
+            print(self.scheduler.get_last_lr())        
+        
+        self.iter_counter += 1
+
+        # self.log_loss = {
+        #     'total_loss': total_loss.item(),
+        #     'output_loss': output_loss.item(),
+        #     'fuse5_loss': fuse5_loss.item(),
+        #     'fuse4_loss': fuse4_loss.item(),
+        #     'fuse3_loss': fuse3_loss.item(),
+        #     'fuse2_loss': fuse2_loss.item(),
+        #     'fuse1_loss': fuse1_loss.item()
+        # }
+
+        return total_loss
+
     def val_op(self, input, target):
         pred_output, pred_fuse5, pred_fuse4, pred_fuse3, pred_fuse2, pred_fuse1, = self.model(input)
 
