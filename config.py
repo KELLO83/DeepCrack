@@ -10,8 +10,8 @@ class Config:
     setproctitle.setproctitle("%s" % name)
 
     # path
-    train_data_path = 'data/train_example.txt'
-    test_data_path = 'data/test_example.txt' # 수정
+    train_data_path = 'data/CrackTree_IMAGE'
+    test_data_path = 'data/CrackTree_IMAGE/val' # 수정
     checkpoint_path = 'checkpoints'
     log_path = 'log'
     saver_path = os.path.join(checkpoint_path, name)
@@ -26,14 +26,14 @@ class Config:
     val_every = 200
 
     # training
-    epoch = 500
+    epoch = 50
     pretrained_model = ''
-    weight_decay = 0.0000
+    weight_decay = 1e-3
     lr_decay = 0.1
     lr = 1e-3
     momentum = 0.9
     use_adam = True  # Use Adam optimizer
-    train_batch_size = 8
+    train_batch_size = 4
     val_batch_size = 4
     test_batch_size = 4
 

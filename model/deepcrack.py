@@ -1,7 +1,7 @@
 from torch import nn
 import torch
 import torch.nn.functional as F
-
+import torchinfo
 
 def Conv3X3(in_, out):
     return torch.nn.Conv2d(in_, out, 3, padding=1)
@@ -153,12 +153,13 @@ class DeepCrack(nn.Module):
 
         output = self.final(torch.cat([fuse5,fuse4,fuse3,fuse2,fuse1],1))
 
-        return output, fuse5, fuse4, fuse3, fuse2, fuse1
-
+        return output
 if __name__ == '__main__':
-    inp = torch.randn((1,3,512,512))
-
+    inp = torch.randn(size=(1,3,512,512))
+    print("input shape : ",inp.shape)
     model = DeepCrack()
 
     out = model(inp)
-
+ 
+    torchinfo.summary(model , input_size=(1,3,512,512))
+    print("=========================DEBUG=====================")
